@@ -1,8 +1,9 @@
 """Sim-only helpers for cart_driver scenarios (tesla_sim / Webots).
 
-  python3 simtools.py spawn NAME AHEAD LEFT SX SY SZ [--yaw 3.1415]
+  python3 simtools.py spawn NAME AHEAD LEFT SX SY SZ [--yaw 3.1415] [--flat]
       box obstacle AHEAD m in front of the GPS (front bumper) and LEFT m to
-      the left of the car's axis, at the car's start heading
+      the left of the car's axis, at the car's start heading; --flat makes
+      drivable clutter (paper, paint) lying on the road
   python3 simtools.py remove NAME...
   python3 simtools.py monitor SECONDS OUT.csv [--until-stopped]
       record speed, safety action, e-brake, steering, GPS (sim time) and
@@ -48,11 +49,16 @@ def spawn(args):
     c, s = math.cos(args.yaw), math.sin(args.yaw)
     x = gps['p'][0] + c * args.ahead - s * args.left
     y = gps['p'][1] + s * args.ahead + c * args.left
-    z = 0.3 + args.sz / 2
     box = f'Box {{ size {args.sx} {args.sy} {args.sz} }}'
+    if args.flat:
+        # Flat clutter (paper, paint): no physics, lying on the road surface (z 0.02), drivable.
+        z, color, solid = 0.02 + args.sz / 2, args.color or '0.95 0.95 0.9', ''
+    else:
+        z, color = 0.3 + args.sz / 2, args.color or '0.8 0.45 0.1'
+        solid = f'boundingObject {box} physics Physics {{ density -1 mass 20 }} '
     vrml = (f'Solid {{ name "{args.name}" translation {x:.3f} {y:.3f} {z:.3f} rotation 0 0 1 {args.yaw:.4f} '
-            f'children [ Shape {{ appearance PBRAppearance {{ baseColor 0.8 0.45 0.1 roughness 1 metalness 0 }} '
-            f'geometry {box} }} ] boundingObject {box} physics Physics {{ density -1 mass 20 }} }}')
+            f'children [ Shape {{ appearance PBRAppearance {{ baseColor {color} roughness 1 metalness 0 }} '
+            f'geometry {box} }} ] {solid}}}')
     fut = cli.call_async(SpawnNodeFromString.Request(data=vrml))
     rclpy.spin_until_future_complete(n, fut, timeout_sec=10.0)
     ok = fut.result() is not None and fut.result().success
@@ -129,6 +135,8 @@ def main():
     for arg, kind in [('name', str), ('ahead', float), ('left', float), ('sx', float), ('sy', float), ('sz', float)]:
         s.add_argument(arg, type=kind)
     s.add_argument('--yaw', type=float, default=3.1415)
+    s.add_argument('--flat', action='store_true', help='drivable flat clutter: no physics, on the road surface')
+    s.add_argument('--color', help='r g b, e.g. "0.9 0.8 0.1"')
     r = sub.add_parser('remove')
     r.add_argument('names', nargs='+')
     m = sub.add_parser('monitor')

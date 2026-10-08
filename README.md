@@ -38,6 +38,26 @@ Each step lands as its own pull request.
 | `driver` | odometry; holds 5 km/h with a PI loop on measured speed (output ≥ 0, never a braking command); obeys `/cart/safety` | in: `/vehicle/speed`, `/steering/angle`, `/vehicle/imu`, `/cart/safety`; out: `/cmd_ackermann`, `/cart/odom` + TF `odom → base_link`, `/cart/state` |
 | `safety` | the **only** node that can brake; independent of the driver | in: `/traversability/grid`, `/cart/local_map` + `/cart/odom`, speed, `/steering/angle`; out: `/vehicle/emergency_brake`, `/cart/safety`, `/cart/safety/collision_distance`; service `~/reset` |
 
+**Local planner** (`planner.py`, inside `driver`, 10 Hz).
+- **Candidates:** about 21 paths of the form "steer towards target T at the
+  relay's real 12.9 °/s, then hold". Each starts from the *measured* wheel
+  angle and is rolled out 10 m at cruise speed on the memory map.
+- **Scoring:**
+  - any footprint collision rules a path out;
+  - clearance from lethal cells (soft 1 m band);
+  - unknown cells;
+  - the route (step 5), or without a route a slowly updated reference
+    heading, so the car returns to its course after swerving;
+  - steering change (relay wear) and straightness.
+- **No clear path:** the driver **coasts**; braking stays with the safety
+  monitor.
+- **Detection distance:** avoidance needs early detection. With ±15° and the
+  relay ramp, the Tesla (2.94 m wheelbase, 11 m radius) needs about 7 m of
+  travel to move 1.7 m sideways. The cart's shorter wheelbase should turn
+  tighter.
+- **Outputs:** the chosen path is `/cart/plan` and the target is
+  `/cart/steer_target`.
+
 **Memory map** (`local_map.py`, inside `driver`).
 - **Why:** perception sees only 2.7–10 m ahead in a narrow cone, so the
   inside of a turn, where the body will sweep, is out of view.
@@ -87,3 +107,11 @@ Step 3, memory map:
 | Scenario | Result |
 | --- | --- |
 | C. Drive 20.9 m past a box 3.5 m to the side | odometry drift vs GPS 0.02 m; with the box 8.7 m **behind** the bumper (out of view) it is still in the map, **0.01 m** from its true position; no other lethal cells; 0 brakes |
+
+Step 4, planner:
+
+| Scenario | Result |
+| --- | --- |
+| D. Box in the lane 20 m ahead | steered around it with **0.49 m** between the body and the box; peak heading change about 12–14°, then back towards the original course; 5.05 km/h throughout; **no coasting, 0 brakes** |
+| E. Paper, a paint line and a dark stain in the lane | drove straight over all three, **0.0°** of steering for the whole run; 0 brakes |
+| F. Box appears 4.5 m ahead while cruising (too close to avoid) | emergency brake at 2.50 m (coasting needed 2.48 m); stopped **2.54 m short** |
