@@ -8,15 +8,24 @@ safety monitor goes quiet for ``safety_timeout``) it commands throttle 0.
 Steering: straight ahead (``steering: straight``) -- the local planner is
 added in a later step.
 
+Memory: every /traversability/grid frame is placed in a rolling local map
+(cart_driver.local_map) at the camera's pose when the frame was captured, so
+obstacles that leave the camera's narrow view are remembered for
+``memory_s`` s. Published as /cart/local_map (odom frame) for the safety
+monitor and for viewing.
+
 Publishes /cart/odom (nav_msgs/Odometry, rear-axle pose in ``odom``) and the
-TF odom -> base_link. Runs on sim time in simulation (use_sim_time).
+TF odom -> base_link. Runs on sim time in simulation (use_sim_time); sensor
+stamps (wall clock in Webots) are mapped onto it by timesync.ClockMap.
 """
 
 import math
+import time
 
 import rclpy
 from ackermann_msgs.msg import AckermannDrive
 from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Odometry as OdometryMsg
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -26,7 +35,10 @@ from std_msgs.msg import Float32, String
 from tf2_ros import TransformBroadcaster
 
 from cart_driver import control, vehicle
+from cart_driver.gridview import GridView
+from cart_driver.local_map import LocalMap
 from cart_driver.odometry import Odometry
+from cart_driver.timesync import ClockMap
 
 
 class DriverNode(Node):
@@ -41,6 +53,12 @@ class DriverNode(Node):
         self.speed_scale = p('speed_scale', 1.0).value      # topic units -> m/s
         imu_topic = p('imu_topic', '/vehicle/imu').value
         self.use_imu = p('use_imu', True).value
+        self.memory = LocalMap(size_m=p('memory_size_m', 40.0).value, resolution=p('memory_resolution', 0.1).value,
+                               memory_s=p('memory_s', 15.0).value)
+        self.clock_map = ClockMap(identity=not self.get_parameter('use_sim_time').value)
+        self.map_period = 1.0 / p('map_publish_rate', 2.0).value
+        self.last_map_pub = -math.inf
+        self.frames = 0
 
         self.speed = 0.0
         self.steer_deg = 0.0
@@ -54,11 +72,13 @@ class DriverNode(Node):
         self.pub_cmd = self.create_publisher(AckermannDrive, '/cmd_ackermann', 1)
         self.pub_odom = self.create_publisher(OdometryMsg, '/cart/odom', 10)
         self.pub_state = self.create_publisher(String, '/cart/state', 10)
+        self.pub_map = self.create_publisher(OccupancyGrid, '/cart/local_map', 2)
         self.tf = TransformBroadcaster(self)
         self.create_subscription(Float32, speed_topic, self.on_speed, 10)
         self.create_subscription(Float32, '/steering/angle', lambda m: setattr(self, 'steer_deg', m.data), 10)
         self.create_subscription(Imu, imu_topic, self.on_imu, qos_profile_sensor_data)
         self.create_subscription(String, '/cart/safety', self.on_safety, 10)
+        self.create_subscription(OccupancyGrid, '/traversability/grid', self.on_grid, 2)
         self.last_tick = None
         self.create_timer(1.0 / self.rate, self.tick)
         self.get_logger().info(f'Driver: cruise {self.cruise_ms * 3.6:.1f} km/h, throttle-only (never brakes)')
@@ -77,6 +97,31 @@ class DriverNode(Node):
         self.safety = msg.data
         self.safety_time = self.now()
 
+    def on_grid(self, msg):
+        if self.odometry.time is None:
+            return
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        t = self.clock_map.to_sim(stamp)
+        rear = self.odometry.pose_at(t)
+        cx, cy = vehicle.offset_point(rear, self.params.camera_x)
+        self.memory.integrate(GridView.from_msg(msg), (cx, cy, rear[2]), t)
+        self.frames += 1
+
+    def publish_map(self, t):
+        if self.memory.origin is None or t - self.last_map_pub < self.map_period:
+            return
+        self.last_map_pub = t
+        view = self.memory.view(t)
+        msg = OccupancyGrid()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'odom'
+        msg.info.resolution = float(view.res)
+        msg.info.height, msg.info.width = view.data.shape
+        msg.info.origin.position.x, msg.info.origin.position.y = view.origin_x, view.origin_y
+        msg.info.origin.orientation.w = 1.0
+        msg.data = view.data.ravel().tolist()
+        self.pub_map.publish(msg)
+
     def steering(self):
         """Steering command, stack convention (deg, + = right)."""
         return 0.0
@@ -85,6 +130,7 @@ class DriverNode(Node):
         t = self.now()
         if t == 0.0:
             return                                   # no /clock yet
+        self.clock_map.observe(time.time(), t)
         dt = 0.0 if self.last_tick is None else t - self.last_tick
         self.last_tick = t
         pose = self.odometry.update(t, self.speed, self.steer_deg, self.yaw_rate)
@@ -101,6 +147,7 @@ class DriverNode(Node):
         self.pub_cmd.publish(cmd)
         self.pub_state.publish(String(data='drive' if safety_ok else f'coast ({self.safety or "no safety"})'))
         self.publish_odometry(pose)
+        self.publish_map(t)
 
     def publish_odometry(self, pose):
         x, y, yaw = pose

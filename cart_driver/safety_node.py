@@ -2,7 +2,9 @@
 
 Independent of the driver, so a planner bug can't disable it. Each tick it
 predicts where the vehicle goes if it keeps its current (measured) steering,
-checks that swept footprint against the latest perception grid, and decides:
+checks that swept footprint against the latest perception grid -- and
+against the driver's memory map (/cart/local_map with /cart/odom), which
+remembers obstacles that have left the camera's view -- and decides:
 
   DRIVE            all clear
   COAST            perception is stale (> stale_after): throttle off, roll
@@ -20,7 +22,7 @@ import math
 
 import numpy as np
 import rclpy
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, String
@@ -45,6 +47,7 @@ class SafetyNode(Node):
         # A collision must be seen on this many consecutive ticks (50 ms each)
         # before braking, so one bad perception frame can't fire the brake.
         self.confirm_ticks = p('brake_confirm_ticks', 2).value
+        self.memory_max_age = p('memory_max_age', 1.0).value
         self.danger_ticks = 0
         speed_topic = p('speed_topic', '/vehicle/speed').value
         self.speed_scale = p('speed_scale', 1.0).value      # topic units -> m/s
@@ -54,6 +57,9 @@ class SafetyNode(Node):
         self.steer_deg = 0.0
         self.grid = None
         self.grid_time = None
+        self.memory = None
+        self.memory_time = None
+        self.odom_pose = None
         self.braking = False
         self.brake_count = 0
         self.last_action = None
@@ -62,6 +68,8 @@ class SafetyNode(Node):
         self.pub_action = self.create_publisher(String, '/cart/safety', 10)
         self.pub_dist = self.create_publisher(Float32, '/cart/safety/collision_distance', 10)
         self.create_subscription(OccupancyGrid, '/traversability/grid', self.on_grid, 2)
+        self.create_subscription(OccupancyGrid, '/cart/local_map', self.on_memory, 2)
+        self.create_subscription(Odometry, '/cart/odom', self.on_odom, 10)
         self.create_subscription(Float32, speed_topic, lambda m: setattr(self, 'speed', m.data * self.speed_scale), 10)
         self.create_subscription(Float32, '/steering/angle', lambda m: setattr(self, 'steer_deg', m.data), 10)
         self.create_service(Trigger, '~/reset', self.on_reset)
@@ -74,6 +82,15 @@ class SafetyNode(Node):
     def on_grid(self, msg):
         self.grid = msg
         self.grid_time = self.now()
+
+    def on_memory(self, msg):
+        self.memory = GridView.from_msg(msg)
+        self.memory_time = self.now()
+
+    def on_odom(self, msg):
+        q = msg.pose.pose.orientation
+        self.odom_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y,
+                          2.0 * math.atan2(q.z, q.w))
 
     def predicted_path(self, start):
         """Rear-axle poses along the arc of the current steering, 0.1 m apart."""
@@ -92,6 +109,10 @@ class SafetyNode(Node):
             start = (-self.params.camera_x, 0.0, 0.0)
             view = clear_footprint(GridView.from_msg(self.grid), start, self.circles)
             dist = min(dist, collision_distance(view, self.predicted_path(start), self.circles, 0.1))
+        if (self.memory is not None and self.odom_pose is not None
+                and self.now() - self.memory_time < self.memory_max_age):
+            view = clear_footprint(self.memory, self.odom_pose, self.circles)
+            dist = min(dist, collision_distance(view, self.predicted_path(self.odom_pose), self.circles, 0.1))
         return dist
 
     def tick(self):
