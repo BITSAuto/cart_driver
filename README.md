@@ -36,7 +36,20 @@ Each step lands as its own pull request.
 | Node | Does | Topics |
 | --- | --- | --- |
 | `driver` | odometry; holds 5 km/h with a PI loop on measured speed (output ≥ 0, never a braking command); obeys `/cart/safety` | in: `/vehicle/speed`, `/steering/angle`, `/vehicle/imu`, `/cart/safety`; out: `/cmd_ackermann`, `/cart/odom` + TF `odom → base_link`, `/cart/state` |
-| `safety` | the **only** node that can brake; independent of the driver | in: `/traversability/grid`, speed, `/steering/angle`; out: `/vehicle/emergency_brake`, `/cart/safety`, `/cart/safety/collision_distance`; service `~/reset` |
+| `safety` | the **only** node that can brake; independent of the driver | in: `/traversability/grid`, `/cart/local_map` + `/cart/odom`, speed, `/steering/angle`; out: `/vehicle/emergency_brake`, `/cart/safety`, `/cart/safety/collision_distance`; service `~/reset` |
+
+**Memory map** (`local_map.py`, inside `driver`).
+- **Why:** perception sees only 2.7–10 m ahead in a narrow cone, so the
+  inside of a turn, where the body will sweep, is out of view.
+- **How:** each perception frame is placed in a 40 m rolling grid in the
+  `odom` frame, at the camera's pose at *capture* time. Webots stamps sensors
+  with wall-clock time while the drivers run on sim time;
+  `timesync.ClockMap` converts between them.
+- **Keeping it current:** the newest observation of a cell wins, so an area
+  seen free again clears an old obstacle. Cells unseen for 15 s fall back to
+  unknown.
+- **Use:** published at 2 Hz as `/cart/local_map`. The safety monitor checks
+  it too, so obstacles that have slid under the bonnet still count.
 
 **Safety rules.** Each tick (20 Hz), `safety` predicts the swept footprint at
 the current measured steering, out to 10 m on the latest perception grid. It
@@ -68,3 +81,9 @@ Step 2, in tesla_sim (sim time), driving straight from the start pose:
 | --- | --- |
 | A. Cruise, box 20 m ahead in the lane (no avoidance yet) | speed held at 5.13 km/h on average (5.06–5.25); emergency brake fired when the box was 3.2 m away at 5.1 km/h (coasting needed 2.47 m); stopped 3.4 m short of it |
 | B. Perception stopped mid-drive | `coast` once the grid was 0.52 s old; rolled to a stop in about 3.5 s; **0** emergency-brake engagements |
+
+Step 3, memory map:
+
+| Scenario | Result |
+| --- | --- |
+| C. Drive 20.9 m past a box 3.5 m to the side | odometry drift vs GPS 0.02 m; with the box 8.7 m **behind** the bumper (out of view) it is still in the map, **0.01 m** from its true position; no other lethal cells; 0 brakes |
