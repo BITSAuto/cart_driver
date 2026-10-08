@@ -22,4 +22,10 @@ setup(
     description='Driving stack for the BITSAuto cart: throttle-only speed hold, safety monitor, local planner.',
     license='Apache-2.0',
     tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'driver = cart_driver.driver_node:main',
+            'safety = cart_driver.safety_node:main',
+        ],
+    },
 )

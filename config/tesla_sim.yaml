@@ -1,0 +1,16 @@
+# cart_driver in tesla_sim (Webots). Vehicle geometry comes from the
+# 'tesla_sim' profile in cart_driver/vehicle.py.
+cart_driver:
+  ros__parameters:
+    vehicle: tesla_sim
+    cruise_kmh: 5.0
+    speed_topic: /vehicle/speed      # m/s
+    speed_scale: 1.0
+    imu_topic: /vehicle/imu
+
+cart_safety:
+  ros__parameters:
+    vehicle: tesla_sim
+    coast_decel: 0.4                 # matches tesla_sim coastDecel
+    speed_topic: /vehicle/speed
+    speed_scale: 1.0
