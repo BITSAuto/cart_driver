@@ -27,7 +27,7 @@ continuous loop on the drivable area from `traversability`, and stay safe
 2. Short-term memory map: rolling local occupancy in the `odom` frame.
 3. Local planner: steering paths evaluated on the memory map, plus a
    scenario suite in the sim.
-4. Loop route: follow a recorded loop (keep-left) continuously.
+4. Loop route: follow a loop route (keep left) continuously.
 
 Each step lands as its own pull request.
 
@@ -35,7 +35,7 @@ Each step lands as its own pull request.
 
 | Node | Does | Topics |
 | --- | --- | --- |
-| `driver` | odometry; holds 5 km/h with a PI loop on measured speed (output ≥ 0, never a braking command); obeys `/cart/safety` | in: `/vehicle/speed`, `/steering/angle`, `/vehicle/imu`, `/cart/safety`; out: `/cmd_ackermann`, `/cart/odom` + TF `odom → base_link`, `/cart/state` |
+| `driver` | odometry; holds 5 km/h with a PI loop on measured speed (output ≥ 0, never a braking command); obeys `/cart/safety`; memory map, planner, route following | in: `/vehicle/speed`, `/steering/angle`, `/vehicle/imu`, `/cart/safety`, `/traversability/grid`, `/vehicle/gps`; out: `/cmd_ackermann`, `/cart/odom` + TF `odom → base_link`, `/cart/state`, `/cart/local_map`, `/cart/plan`, `/cart/route`, `/cart/route/cross_track` |
 | `safety` | the **only** node that can brake; independent of the driver | in: `/traversability/grid`, `/cart/local_map` + `/cart/odom`, speed, `/steering/angle`; out: `/vehicle/emergency_brake`, `/cart/safety`, `/cart/safety/collision_distance`; service `~/reset` |
 
 **Local planner** (`planner.py`, inside `driver`, 10 Hz).
@@ -57,6 +57,33 @@ Each step lands as its own pull request.
   tighter.
 - **Outputs:** the chosen path is `/cart/plan` and the target is
   `/cart/steer_target`.
+
+**Loop route** (`route.py`, inside `driver`; step 5).
+- **The route:** `routes/tesla_city_loop.yaml` is a closed 480 m loop in the
+  world frame, in the **kerb-side left lane** (8.06 m left of the centre
+  line), driven anticlockwise. It describes the GPS point (the front bumper in
+  tesla_sim), one point every 0.5 m.
+- **Making routes:** `tools/make_route.py` builds a route from either:
+  - the road geometry (`--rounded-rect`; tesla_city's loop is straight
+    segments plus 40.5 m-radius curves), or
+  - a recorded centre line (`--csv`, from `tools/record_route.py`, which
+    drives the yellow line and logs GPS).
+
+  The geometry is preferred. A recording matches it to 0.24 m on average but
+  drifts up to 1.7 m at junctions, where there's no centre line to follow.
+- **Odom → world:** the planner works in `odom`, the route in the world frame.
+  Each GPS fix is paired with odometry of the same point at the same time. A
+  2D rigid fit over the last 30 m gives the transform, and the window absorbs
+  odometry drift. Until the vehicle has moved 3 m, the known start heading
+  (`initial_world_yaw`) is used instead.
+- **Progress:** the nearest route point, searched only from 5 m behind to 30 m
+  ahead of the last one. Progress can't jump to a nearby stretch of the loop,
+  and it wraps around to count laps.
+- **Planner cost:** each candidate's end point (10 m ahead) is scored by its
+  distance from the route and its heading error against the route. Obstacles
+  still win: collisions rule a candidate out, and clearance is still costed.
+  So the car leaves the lane to pass an obstacle and then returns to it.
+- **No stop:** the route is closed, so the cart just keeps lapping.
 
 **Memory map** (`local_map.py`, inside `driver`).
 - **Why:** perception sees only 2.7–10 m ahead in a narrow cone, so the
@@ -93,6 +120,9 @@ python3 tools/simtools.py spawn box1 20 0 0.6 0.6 0.8 # obstacle 20 m ahead in t
 python3 tools/simtools.py monitor 90 run.csv --until-stopped
 ```
 
+The sim config follows `routes/tesla_city_loop.yaml`. Set `route_file: ''`
+to drive without a route (heading keeping only).
+
 ## Results
 
 Step 2, in tesla_sim (sim time), driving straight from the start pose:
@@ -115,3 +145,9 @@ Step 4, planner:
 | D. Box in the lane 20 m ahead | steered around it with **0.49 m** between the body and the box; peak heading change about 12–14°, then back towards the original course; 5.05 km/h throughout; **no coasting, 0 brakes** |
 | E. Paper, a paint line and a dark stain in the lane | drove straight over all three, **0.0°** of steering for the whole run; 0 brakes |
 | F. Box appears 4.5 m ahead while cruising (too close to avoid) | emergency brake at 2.50 m (coasting needed 2.48 m); stopped **2.54 m short** |
+
+Step 5, loop route:
+
+| Scenario | Result |
+| --- | --- |
+| L. Follow `tesla_city_loop` from the start pose for 420 s (sim time) | **584 m, more than one full lap, without stopping**; 5.00 km/h on average (5.00–5.24); **0 brakes, 0 coasting**. The car starts 10 m right of the lane and merged into it within 21 m. After that it stayed **0.31 m** from the route on average (p95 0.60 m, max 0.93 m) by GPS truth. The planner's own cross-track estimate agreed to within 0.05 m on average. The pattern repeats every lap: about 0.2 m inside on corners and up to 0.6 m outside where a straight follows a corner. |

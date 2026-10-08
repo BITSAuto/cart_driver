@@ -157,6 +157,9 @@ def main(args=None):
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError:
+        if rclpy.ok():
+            raise                                        # a real error, not a callback cut off by Ctrl-C
     finally:
         if rclpy.ok():
             try:

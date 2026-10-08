@@ -7,6 +7,10 @@ cart_driver:
     speed_topic: /vehicle/speed      # m/s
     speed_scale: 1.0
     imu_topic: /vehicle/imu
+    # Step 5: the tesla_city loop, kerb-side lane (keep left), anticlockwise.
+    route_file: tesla_city_loop.yaml # relative -> share/cart_driver/routes
+    gps_topic: /vehicle/gps          # world-frame fix at the front bumper
+    initial_world_yaw: 3.1415        # start heading in the world (-x)
 
 cart_safety:
   ros__parameters:

@@ -16,18 +16,26 @@ obstacles that leave the camera's narrow view are remembered for
 ``memory_s`` s. Published as /cart/local_map (odom frame) for the safety
 monitor and for viewing.
 
+Route (step 5): with ``route_file`` set, the planner follows a closed loop
+route (cart_driver.route) instead of just keeping its heading. The route is
+in the world frame; GPS fixes (``gps_topic``, the point ``gps_x`` m ahead of
+the rear axle) paired with odometry give the odom -> world transform. The
+route is published as /cart/route (odom frame) and the signed cross-track
+error as /cart/route/cross_track (m, + = left of the route).
+
 Publishes /cart/odom (nav_msgs/Odometry, rear-axle pose in ``odom``) and the
 TF odom -> base_link. Runs on sim time in simulation (use_sim_time); sensor
 stamps (wall clock in Webots) are mapped onto it by timesync.ClockMap.
 """
 
 import math
+import os
 import time
 
 import rclpy
 from ackermann_msgs.msg import AckermannDrive
 from geometry_msgs.msg import TransformStamped
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PointStamped, PoseStamped
 from nav_msgs.msg import OccupancyGrid, Path
 from nav_msgs.msg import Odometry as OdometryMsg
 from rclpy.executors import ExternalShutdownException
@@ -42,6 +50,7 @@ from cart_driver.gridview import GridView
 from cart_driver.local_map import LocalMap
 from cart_driver.odometry import Odometry
 from cart_driver.planner import ArcPlanner
+from cart_driver.route import Route, RouteFollower, WorldAligner
 from cart_driver.timesync import ClockMap
 
 
@@ -67,7 +76,19 @@ class DriverNode(Node):
         self.plan_period = 1.0 / p('plan_rate', 10.0).value
         self.last_plan_t = -math.inf
         self.plan = None
-        self.route = None                 # set by the route follower (step 5)
+        self.route = None                 # the RouteFollower, once the world alignment is known
+        self.follower = self.aligner = None
+        route_file = p('route_file', '').value
+        self.gps_x = p('gps_x', self.params.wheelbase + self.params.front_overhang).value
+        self.last_route_pub = -math.inf
+        if route_file:
+            if not os.path.isabs(route_file):
+                from ament_index_python.packages import get_package_share_directory
+                route_file = os.path.join(get_package_share_directory('cart_driver'), 'routes', route_file)
+            route = Route.load(route_file)
+            self.aligner = WorldAligner(initial_yaw=p('initial_world_yaw', 0.0).value)
+            self.follower = RouteFollower(route, self.aligner, self.gps_x)
+            self.get_logger().info(f'Route {route.name}: {route.length:.0f} m, {len(route)} points')
         # Route-less course keeping: a slow average of the heading (time
         # constant heading_tau s) that the planner steers back towards.
         self.heading_tau = p('heading_tau', 8.0).value
@@ -88,12 +109,16 @@ class DriverNode(Node):
         self.pub_map = self.create_publisher(OccupancyGrid, '/cart/local_map', 2)
         self.pub_plan = self.create_publisher(Path, '/cart/plan', 2)
         self.pub_target = self.create_publisher(Float32, '/cart/steer_target', 10)
+        self.pub_route = self.create_publisher(Path, '/cart/route', 1)
+        self.pub_cross = self.create_publisher(Float32, '/cart/route/cross_track', 10)
         self.tf = TransformBroadcaster(self)
         self.create_subscription(Float32, speed_topic, self.on_speed, 10)
         self.create_subscription(Float32, '/steering/angle', lambda m: setattr(self, 'steer_deg', m.data), 10)
         self.create_subscription(Imu, imu_topic, self.on_imu, qos_profile_sensor_data)
         self.create_subscription(String, '/cart/safety', self.on_safety, 10)
         self.create_subscription(OccupancyGrid, '/traversability/grid', self.on_grid, 2)
+        if self.follower is not None:
+            self.create_subscription(PointStamped, p('gps_topic', '/vehicle/gps').value, self.on_gps, 10)
         self.last_tick = None
         self.create_timer(1.0 / self.rate, self.tick)
         self.get_logger().info(f'Driver: cruise {self.cruise_ms * 3.6:.1f} km/h, throttle-only (never brakes)')
@@ -121,6 +146,36 @@ class DriverNode(Node):
         cx, cy = vehicle.offset_point(rear, self.params.camera_x)
         self.memory.integrate(GridView.from_msg(msg), (cx, cy, rear[2]), t)
         self.frames += 1
+
+    def on_gps(self, msg):
+        """Pair the fix with odometry of the same point at the same time."""
+        if self.odometry.time is None:
+            return
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        t = self.clock_map.to_sim(stamp) if stamp > 0 else self.now()
+        rear = self.odometry.pose_at(t)
+        self.aligner.add(vehicle.offset_point(rear, self.gps_x), (msg.point.x, msg.point.y), rear[2])
+
+    def follow_route(self, t, pose):
+        if self.follower is None or not self.aligner.ready:
+            return
+        self.follower.update(pose)
+        self.route = self.follower
+        self.pub_cross.publish(Float32(data=self.follower.cross_track))
+        if t - self.last_route_pub >= 1.0:
+            self.last_route_pub = t
+            r = self.follower.route
+            idx = r.window(self.follower.progress - 20, 120)       # 10 m behind to 50 m ahead
+            msg = Path()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'odom'
+            for (x, y), yaw in zip(self.aligner.to_odom(r.points[idx]), r.heading[idx] - self.aligner.theta):
+                ps = PoseStamped()
+                ps.header = msg.header
+                ps.pose.position.x, ps.pose.position.y = float(x), float(y)
+                ps.pose.orientation.z, ps.pose.orientation.w = math.sin(yaw / 2), math.cos(yaw / 2)
+                msg.poses.append(ps)
+            self.pub_route.publish(msg)
 
     def publish_map(self, t):
         if self.memory.origin is None or t - self.last_map_pub < self.map_period:
@@ -176,6 +231,7 @@ class DriverNode(Node):
 
         safety_ok = (self.safety == control.Action.DRIVE.value and self.safety_time is not None
                      and t - self.safety_time < self.safety_timeout)
+        self.follow_route(t, pose)
         self.steer_cmd_deg = self.steering(t, pose)
         blocked = self.plan is not None and not self.plan.valid
         target = self.cruise_ms if safety_ok and not blocked else 0.0
@@ -188,6 +244,9 @@ class DriverNode(Node):
         self.pub_target.publish(Float32(data=float(self.steer_cmd_deg)))
         state = ('drive' if safety_ok and not blocked else
                  'coast (blocked: no clear path)' if blocked else f'coast ({self.safety or "no safety"})')
+        if self.route is not None:
+            state += (f'; route {self.follower.distance:.0f} m (lap {self.follower.laps + 1}), '
+                      f'cross-track {self.follower.cross_track:+.2f} m')
         self.pub_state.publish(String(data=state))
         self.publish_odometry(pose)
         self.publish_map(t)
@@ -220,6 +279,9 @@ def main(args=None):
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError:
+        if rclpy.ok():
+            raise                                        # a real error, not a callback cut off by Ctrl-C
     finally:
         if rclpy.ok():
             try:

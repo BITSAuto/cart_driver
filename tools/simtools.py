@@ -6,8 +6,8 @@
       drivable clutter (paper, paint) lying on the road
   python3 simtools.py remove NAME...
   python3 simtools.py monitor SECONDS OUT.csv [--until-stopped]
-      record speed, safety action, e-brake, steering, GPS (sim time) and
-      print a summary
+      record speed, safety action, e-brake, steering, GPS, route cross-track
+      (sim time) and print a summary
 
 Positions: the GPS sits in the Tesla's front sensor slot, which is the front
 bumper (3.79 m ahead of the rear axle).
@@ -76,12 +76,14 @@ def remove(args):
 
 def monitor(args):
     n = sim_node('simtools_monitor')
-    st = {'speed': 0.0, 'safety': '', 'brake': False, 'steer': 0.0, 'gps': (math.nan, math.nan), 'dist': math.nan}
+    st = {'speed': 0.0, 'safety': '', 'brake': False, 'steer': 0.0, 'gps': (math.nan, math.nan), 'dist': math.nan,
+          'cross': math.nan}
     n.create_subscription(Float32, '/vehicle/speed', lambda m: st.__setitem__('speed', m.data), 10)
     n.create_subscription(String, '/cart/safety', lambda m: st.__setitem__('safety', m.data), 10)
     n.create_subscription(Bool, '/vehicle/emergency_brake', lambda m: st.__setitem__('brake', m.data), 10)
     n.create_subscription(Float32, '/steering/angle', lambda m: st.__setitem__('steer', m.data), 10)
     n.create_subscription(Float32, '/cart/safety/collision_distance', lambda m: st.__setitem__('dist', m.data), 10)
+    n.create_subscription(Float32, '/cart/route/cross_track', lambda m: st.__setitem__('cross', m.data), 10)
     n.create_subscription(PointStamped, '/vehicle/gps', lambda m: st.__setitem__('gps', (m.point.x, m.point.y)), 1)
 
     def now():
@@ -94,13 +96,13 @@ def monitor(args):
         t = now() - t0
         if t - last >= 0.1:
             last = t
-            rows.append((round(t, 2), st['speed'], st['safety'], int(st['brake']), st['steer'], *st['gps'], st['dist']))
+            rows.append((round(t, 2), st['speed'], st['safety'], int(st['brake']), st['steer'], *st['gps'], st['dist'], st['cross']))
             moved |= st['speed'] > 1.0
             if args.until_stopped and moved and st['speed'] < 0.02 and t > 5:
                 break
     with open(args.out, 'w', newline='') as f:
         w = csv.writer(f)
-        w.writerow(['t', 'speed', 'safety', 'brake', 'steer_deg', 'gps_x', 'gps_y', 'collision_dist'])
+        w.writerow(['t', 'speed', 'safety', 'brake', 'steer_deg', 'gps_x', 'gps_y', 'collision_dist', 'cross_track'])
         w.writerows(rows)
     summarize(rows)
 
@@ -123,6 +125,14 @@ def summarize(rows):
     print('safety states:', ', '.join(f'{s}@{tt:.1f}s' for tt, s in changes))
     engaged = np.flatnonzero(np.diff(brake) > 0)
     print(f'emergency brake engagements: {len(engaged) + int(brake[0] == 1)}')
+    cross = np.array([r[8] for r in rows])
+    if np.isfinite(cross).any():
+        settled = np.isfinite(cross) & (np.abs(cross) < 1.0)
+        after = np.arange(len(cross)) >= (np.argmax(settled) if settled.any() else len(cross))
+        c = np.abs(cross[after & np.isfinite(cross)])
+        if c.size:
+            print(f'route cross-track once within 1 m ({t[after][0]:.1f} s on): mean {c.mean():.2f} m, '
+                  f'p95 {np.percentile(c, 95):.2f}, max {c.max():.2f}')
     for i in engaged:
         print(f'  at {t[i + 1]:.1f} s, speed {v[i] * 3.6:.2f} km/h, '
               f'obstacle {rows[i][7]:.2f} m ahead on the predicted path')
