@@ -4,6 +4,10 @@ Driving stack for the BITSAuto cart: hold a fixed low speed, steer a
 continuous loop on the drivable area from `traversability`, and stay safe
 **without using the brake in normal driving**.
 
+Design history, decisions, verified facts, open questions, known bugs and
+status are in the [project docs](project-docs/README.md). Read them before
+changing anything, and update them with every change.
+
 ## Constraints that shape the design
 
 - **Never brake in normal driving.** The cart's brake can't modulate: it stops
