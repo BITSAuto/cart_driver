@@ -62,6 +62,14 @@ Each step lands as its own pull request.
 - **Outputs:** the chosen path is `/cart/plan` and the target is
   `/cart/steer_target`.
 
+**Road-centre cost** (`centre_line.py`, `road_model.py`, inside `driver`).
+Each perception grid also goes through road_follower's centre-line estimator
+(vendored). The fitted centre line is kept in `odom`, and the planner adds the
+distance of the body centre from it as a cost, so the car keeps to the middle
+of the road whenever perception sees its edges (curbs, walls, grass marked
+lethal). Obstacle avoidance and the safety monitor are unchanged. Details in
+[project-docs](project-docs/02-architecture/road-centre-cost.md).
+
 **Memory map** (`local_map.py`, inside `driver`).
 - **Why:** perception sees only 2.7–10 m ahead in a narrow cone, so the
   inside of a turn, where the body will sweep, is out of view.

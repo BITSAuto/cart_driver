@@ -40,6 +40,8 @@ flowchart LR
 | `gridview.py` | `GridView` over an `OccupancyGrid`, clearance (distance transform), footprint collision helpers |
 | `local_map.py` | `LocalMap`: rolling memory map |
 | `planner.py` | `ArcPlanner`, `PlannerWeights`, `Plan` |
+| `road_model.py` | road_follower's centre-line estimator, vendored ([D-020](../03-decisions/D-020-road-centre-cost-from-road-follower.md)) |
+| `centre_line.py` | `CentreLine`: the fitted line in odom; seeding; planner cost |
 | `route.py` (PR #4) | `Route`, `WorldAligner`, `RouteFollower` |
 | `driver_node.py`, `safety_node.py` | the two ROS nodes |
 

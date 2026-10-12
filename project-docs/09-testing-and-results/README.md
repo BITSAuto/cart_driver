@@ -10,3 +10,4 @@ RGB-D + depth perception, at 5 km/h. Add new results; don't overwrite.
 | [step-3-memory-map.md](step-3-memory-map.md) | Scenario C |
 | [step-4-planner.md](step-4-planner.md) | Scenarios D, E, F |
 | [step-5-loop.md](step-5-loop.md) | Scenario L (PR #4) |
+| [road-centre-cost.md](road-centre-cost.md) | Road-centre cost in the `road_loop` world (2026-10-12) |

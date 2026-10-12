@@ -17,7 +17,9 @@ perception).
 | unknown | 2 | share of the path over unknown cells |
 | route (step 5) | 1.5 per m | end point's distance from the route |
 | route heading (step 5) | 2 per rad | end heading vs the route's |
-| heading (no route) | 3 per rad | end heading vs a slow reference heading (τ 8 s) |
+| centre (road edges seen) | 1.5 per m | mean distance of the body centre from the road centre line ([road-centre-cost.md](road-centre-cost.md)) |
+| centre heading | 2 per rad | heading vs the centre line at the end of the overlap |
+| heading (no route, no centre line) | 3 per rad | end heading vs a slow reference heading (τ 8 s) |
 | smoothness | 0.02 per ° | change from the previous target (relay chatter) |
 | steering | 0.005 per ° | preference for straight |
 

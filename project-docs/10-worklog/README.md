@@ -33,6 +33,7 @@ File name: `YYYY-MM-DD-short-slug.md`. Several pages on one day are fine.
 
 | Date | Page |
 | --- | --- |
+| 2026-10-12 | [Road-centre cost from road_follower](2026-10-12-road-centre-cost.md) |
 | 2026-10-09 | [Project docs](2026-10-09-project-docs.md) |
 | 2026-10-08 | [Step 5: loop route](2026-10-08-step-5-loop-route.md) |
 | 2026-10-08 | [Steps 2–4](2026-10-08-steps-2-to-4.md) |

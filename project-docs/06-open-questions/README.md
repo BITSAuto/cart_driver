@@ -13,3 +13,6 @@
 | [Q-009](Q-009-performance-on-the-orin.md) | Performance on the Orin | Open | medium |
 | [Q-010](Q-010-lateral-offset-after-corners.md) | Lateral offset after corners | Open | low |
 | [Q-011](Q-011-scenario-scripts-not-in-repo.md) | Scenario scripts not in the repo | Open | medium |
+| [Q-012](Q-012-road-follower-not-in-git.md) | road_follower isn't in git; road model vendored | Open | medium |
+| [Q-013](Q-013-centre-cost-tuning.md) | Tuning and coverage of the road-centre cost | Open | medium |
+| [Q-014](Q-014-narrow-road-obstacle-avoidance.md) | Passing an obstacle on a narrow road | Open | high |

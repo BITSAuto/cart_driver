@@ -28,6 +28,17 @@
   GPS (0.02 m over 20.9 m).
 - **Rule:** confirm the data comes from the same run before debugging.
 
+## M-13: Blocked by a box on a narrow road
+- **Found:** 2026-10-12, in road_follower's `road_loop` world (7 m road).
+- **Symptom:** `coast (blocked: no clear path)` ~3.5 m short of a box in the
+  lane; 0 brakes.
+- **Root cause:** single "steer then hold" arcs, each required to be clear for
+  10 m. Seen ~8 m ahead, every arc that clears the box hits the opposite curb
+  within 10 m. Reproduced offline; independent of the road-centre cost.
+- **Status:** open ([Q-014](../06-open-questions/Q-014-narrow-road-obstacle-avoidance.md)).
+- **Rule:** test avoidance where the road is barely wider than needed, not
+  only on wide roads (scenario D used a 21.5 m road).
+
 ## M-06: Tracebacks on shutdown
 - "rcl_shutdown already called" when Ctrl-C had already shut the context
   down: wrapped shutdown in try/except (step 2).

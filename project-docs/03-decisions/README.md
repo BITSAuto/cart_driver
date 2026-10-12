@@ -21,3 +21,4 @@
 | [D-017](D-017-sim-tests-with-sim-trained-perception.md) | 2026-10-08 | Sim tests use sim-trained perception | Accepted |
 | [D-018](D-018-launch-argument-cart-params.md) | 2026-10-08 | Launch argument `cart_params` | Accepted |
 | [D-019](D-019-project-docs.md) | 2026-10-09 | `project-docs/` book | Accepted |
+| [D-020](D-020-road-centre-cost-from-road-follower.md) | 2026-10-12 | Road-centre cost from road_follower's estimator | In review |
