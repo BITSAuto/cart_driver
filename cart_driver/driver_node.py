@@ -16,6 +16,15 @@ obstacles that leave the camera's narrow view are remembered for
 ``memory_s`` s. Published as /cart/local_map (odom frame) for the safety
 monitor and for viewing.
 
+Road centre: with ``road_centre`` on, every grid also goes through
+road_follower's centre-line estimator (cart_driver.road_model). A fitted
+centre line is placed in odom at the capture-time camera pose
+(cart_driver.centre_line) and, while it is younger than ``centre_max_age``,
+the planner adds the distance from it as a cost. It needs lethal road edges
+(curbs, walls, grass marked lethal) on at least one side; on wide roads whose
+edges perception never sees, nothing is fitted and the planner keeps its
+heading as before. Published as /cart/centre_line (odom).
+
 Publishes /cart/odom (nav_msgs/Odometry, rear-axle pose in ``odom``) and the
 TF odom -> base_link. Runs on sim time in simulation (use_sim_time); sensor
 stamps (wall clock in Webots) are mapped onto it by timesync.ClockMap.
@@ -37,7 +46,8 @@ from sensor_msgs.msg import Imu
 from std_msgs.msg import Float32, String
 from tf2_ros import TransformBroadcaster
 
-from cart_driver import control, vehicle
+from cart_driver import control, road_model, vehicle
+from cart_driver.centre_line import CentreLine
 from cart_driver.gridview import GridView
 from cart_driver.local_map import LocalMap
 from cart_driver.odometry import Odometry
@@ -68,6 +78,15 @@ class DriverNode(Node):
         self.last_plan_t = -math.inf
         self.plan = None
         self.route = None                 # set by the route follower (step 5)
+        self.centre = None                # latest CentreLine, odom frame
+        self.centre_max_age = p('centre_max_age', 1.0).value
+        self.road = None
+        self.road_offset = math.nan       # body-centre distance from the centre line, + = left of it
+        if p('road_centre', True).value:
+            rp = road_model.Params()
+            for name in ('x_near', 'x_far', 'min_width', 'max_width', 'nominal_width'):
+                setattr(rp, name, float(p('road_' + name, float(getattr(rp, name))).value))
+            self.road = road_model.RoadEstimator(rp)
         # Route-less course keeping: a slow average of the heading (time
         # constant heading_tau s) that the planner steers back towards.
         self.heading_tau = p('heading_tau', 8.0).value
@@ -88,6 +107,7 @@ class DriverNode(Node):
         self.pub_map = self.create_publisher(OccupancyGrid, '/cart/local_map', 2)
         self.pub_plan = self.create_publisher(Path, '/cart/plan', 2)
         self.pub_target = self.create_publisher(Float32, '/cart/steer_target', 10)
+        self.pub_centre = self.create_publisher(Path, '/cart/centre_line', 2)
         self.tf = TransformBroadcaster(self)
         self.create_subscription(Float32, speed_topic, self.on_speed, 10)
         self.create_subscription(Float32, '/steering/angle', lambda m: setattr(self, 'steer_deg', m.data), 10)
@@ -119,8 +139,31 @@ class DriverNode(Node):
         t = self.clock_map.to_sim(stamp)
         rear = self.odometry.pose_at(t)
         cx, cy = vehicle.offset_point(rear, self.params.camera_x)
-        self.memory.integrate(GridView.from_msg(msg), (cx, cy, rear[2]), t)
+        view = GridView.from_msg(msg)
+        self.memory.integrate(view, (cx, cy, rear[2]), t)
         self.frames += 1
+        if self.road is not None:
+            self.fit_centre(view, (cx, cy, rear[2]), t)
+
+    def fit_centre(self, view, camera_pose, t):
+        """Fit the road centre line in this grid and keep it in odom."""
+        seed = None
+        if self.centre is not None and t - self.centre.stamp <= self.centre_max_age:
+            seed = self.centre.seed(camera_pose, self.road.p.x_near)
+        est = self.road.estimate(view.data, view.res, view.origin_x, view.origin_y, seed)
+        if not est.ok:
+            return
+        self.centre = CentreLine.from_estimate(est, camera_pose, t)
+        msg = Path()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'odom'
+        for (x, y), yaw in zip(self.centre.points, self.centre.headings):
+            ps = PoseStamped()
+            ps.header = msg.header
+            ps.pose.position.x, ps.pose.position.y = float(x), float(y)
+            ps.pose.orientation.z, ps.pose.orientation.w = math.sin(yaw / 2), math.cos(yaw / 2)
+            msg.poses.append(ps)
+        self.pub_centre.publish(msg)
 
     def publish_map(self, t):
         if self.memory.origin is None or t - self.last_map_pub < self.map_period:
@@ -149,9 +192,15 @@ class DriverNode(Node):
             self.last_plan_t = t
             self.plan = self.planner.plan(self.memory.view(t), pose, self.steer_deg, self.speed,
                                           prev_target_deg=self.steer_cmd_deg, route=self.route,
+                                          centre=self.fresh_centre(t),
                                           ref_heading=self.ref_heading)
             self.publish_plan(self.plan)
         return self.plan.target_deg if self.plan is not None else 0.0
+
+    def fresh_centre(self, t):
+        if self.centre is None or t - self.centre.stamp > self.centre_max_age:
+            return None
+        return self.centre
 
     def publish_plan(self, plan):
         msg = Path()
@@ -188,6 +237,11 @@ class DriverNode(Node):
         self.pub_target.publish(Float32(data=float(self.steer_cmd_deg)))
         state = ('drive' if safety_ok and not blocked else
                  'coast (blocked: no clear path)' if blocked else f'coast ({self.safety or "no safety"})')
+        centre = self.fresh_centre(t)
+        if centre is not None:
+            body = vehicle.offset_point(pose, self.params.wheelbase / 2)
+            self.road_offset = float(centre.lateral_at([body])[0])
+            state += f'; {self.road_offset:+.2f} m from the road centre (+ = left), width {centre.width:.1f} m'
         self.pub_state.publish(String(data=state))
         self.publish_odometry(pose)
         self.publish_map(t)
