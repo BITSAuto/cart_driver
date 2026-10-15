@@ -18,7 +18,7 @@ keeps it on the road, the planner and safety monitor handle obstacles. No GPS,
 no route files.
 
 ## Consequences
-- PR #4 is to be closed unmerged; its branch stays for reference. The planner
+- PR #4 was closed unmerged; its branch stays for reference. The planner
   still accepts an optional `route` cost object (from step 4), unused.
 - A GPS / world position fix is no longer a blocker for the real cart (Q-004
   closed).

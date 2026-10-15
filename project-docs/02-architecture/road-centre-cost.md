@@ -1,4 +1,4 @@
-# Road-centre cost (branch `feat/road-centre-cost`)
+# Road-centre cost
 
 Keeps the vehicle in the middle of the road, using the road edges perception
 sees, without giving up obstacle avoidance or the safety monitor.
