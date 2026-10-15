@@ -1,5 +1,18 @@
 # Completed
 
+Newest first.
+
+## 2026-10-15 · Single config — [PR #7](https://github.com/BITSAuto/cart_driver/pull/7)
+`config/road_loop.yaml` removed: without a route it was identical to
+`tesla_sim.yaml`, so one config serves every world.
+
+## 2026-10-12 → 2026-10-15 · Road-centre cost — [PR #6](https://github.com/BITSAuto/cart_driver/pull/6), merged `f7ed532`
+road_follower's centre-line estimator as a planner cost
+([D-020](../03-decisions/D-020-road-centre-cost-from-road-follower.md)); step 5
+dropped ([D-021](../03-decisions/D-021-no-recorded-routes.md)); the sim model
+default picks what each machine can run. Results:
+[road-centre-cost.md](../09-testing-and-results/road-centre-cost.md).
+
 ## 2026-10-09 · Project docs — [PR #5](https://github.com/BITSAuto/cart_driver/pull/5), merged `35f1f5f`
 This book ([D-019](../03-decisions/D-019-project-docs.md)).
 

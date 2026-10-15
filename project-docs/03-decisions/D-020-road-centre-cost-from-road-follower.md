@@ -1,7 +1,7 @@
 # D-020 · Add a road-centre cost from road_follower's estimator to the planner
 
 - **Date:** 2026-10-12
-- **Status:** In review (branch `feat/road-centre-cost`)
+- **Status:** Accepted ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6), merged 2026-10-15)
 
 ## Context
 A separate session on the Orin (2026-10-09/10, `~/BITSAuto_All_repo`) built

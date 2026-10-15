@@ -1,4 +1,4 @@
-# Road-centre cost (2026-10-12, branch `feat/road-centre-cost`)
+# Road-centre cost (2026-10-12 and 2026-10-15, PR #6)
 
 Orin, tesla_sim headless at ~0.30× real time, road_follower's `road_loop`
 world (7 m road, 0.15 m curbs, 366 m loop), geometry-only perception (as

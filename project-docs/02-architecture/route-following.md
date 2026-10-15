@@ -1,4 +1,4 @@
-# Route following (step 5, in review: [PR #4](https://github.com/BITSAuto/cart_driver/pull/4))
+# Route following (step 5, [PR #4](https://github.com/BITSAuto/cart_driver/pull/4), closed unmerged)
 
 > **Not adopted (2026-10-15):** step 5 was not merged; see [D-021](../03-decisions/D-021-no-recorded-routes.md). Kept as a record.
 

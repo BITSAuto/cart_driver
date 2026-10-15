@@ -28,14 +28,14 @@ without using the brake except in a genuine emergency.
 5. ~~**Loop route:** follow a closed keep-left loop continuously.~~ Built and
    tested (PR #4) but **dropped on 2026-10-15** so the cart isn't tied to one
    recorded loop ([D-021](../03-decisions/D-021-no-recorded-routes.md)).
-6. **Road-centre cost** ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6)):
+6. **Road-centre cost** ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6), merged):
    keep to the middle of whatever road perception shows.
 
 Each step landed as its own PR, stacked on the previous one.
 
 ## Status (2026-10-15)
 Steps 1–4 merged. Step 5 (recorded loop route) was dropped. The road-centre
-cost is in review ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6)):
+cost is merged ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6)):
 in road_follower's 7 m `road_loop` world the car drove 1.26 laps at 5 km/h,
 0.14 m from the true centre on average, 0 brakes. Nothing has run on the real
 cart: it needs a speed source, its real dimensions and coast rate

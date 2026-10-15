@@ -18,7 +18,7 @@ top-level [README](../README.md).
 
 ## Status at a glance (2026-10-09)
 
-Steps 2–4 merged; the road-centre cost in review (PR #6); step 5 (recorded
+Steps 2–4 and the road-centre cost (PR #6) merged; step 5 (recorded
 loop route) dropped on 2026-10-15 (D-021). In the sim: road following on a
 7 m road with curbs at 5 km/h (0.14 m from centre, 0 brakes), avoidance with
 0.49 m clearance on wide roads, flat clutter driven over, emergency stops
