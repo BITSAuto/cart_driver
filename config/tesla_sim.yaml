@@ -7,6 +7,10 @@ cart_driver:
     speed_topic: /vehicle/speed      # m/s
     speed_scale: 1.0
     imu_topic: /vehicle/imu
+    # Road-centre cost (road_follower's estimator). Needs lethal road edges;
+    # tesla_city's 21.5 m roads never show both, so there it rarely fits.
+    road_centre: true
+    centre_max_age: 1.0              # s
 
 cart_safety:
   ros__parameters:

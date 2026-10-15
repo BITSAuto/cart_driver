@@ -1,6 +1,6 @@
 # Completed
 
-## 2026-10-09 · Project docs
+## 2026-10-09 · Project docs — [PR #5](https://github.com/BITSAuto/cart_driver/pull/5), merged `35f1f5f`
 This book ([D-019](../03-decisions/D-019-project-docs.md)).
 
 ## 2026-10-08 · Step 4, planner — [PR #3](https://github.com/BITSAuto/cart_driver/pull/3) (`7b8bf8b`, merged `a0dabc2` 2026-10-09)

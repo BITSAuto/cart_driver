@@ -1,5 +1,7 @@
 # Making routes (step 5, PR #4)
 
+> **Not adopted (2026-10-15):** step 5 was not merged; see [D-021](../03-decisions/D-021-no-recorded-routes.md). Kept as a record.
+
 A route is a YAML list of world-frame points (one every 0.5 m) for the GPS
 point to follow, in driving order. `route_file` selects it.
 

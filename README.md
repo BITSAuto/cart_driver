@@ -31,7 +31,9 @@ changing anything, and update them with every change.
 2. Short-term memory map: rolling local occupancy in the `odom` frame.
 3. Local planner: steering paths evaluated on the memory map, plus a
    scenario suite in the sim.
-4. Loop route: follow a recorded loop (keep-left) continuously.
+4. ~~Loop route: follow a recorded loop.~~ Dropped: the cart drives from
+   perception, not a recorded route (project-docs D-021).
+5. Road-centre cost: keep to the middle of the road perception sees.
 
 Each step lands as its own pull request.
 
@@ -61,6 +63,14 @@ Each step lands as its own pull request.
   tighter.
 - **Outputs:** the chosen path is `/cart/plan` and the target is
   `/cart/steer_target`.
+
+**Road-centre cost** (`centre_line.py`, `road_model.py`, inside `driver`).
+Each perception grid also goes through road_follower's centre-line estimator
+(vendored). The fitted centre line is kept in `odom`, and the planner adds the
+distance of the body centre from it as a cost, so the car keeps to the middle
+of the road whenever perception sees its edges (curbs, walls, grass marked
+lethal). Obstacle avoidance and the safety monitor are unchanged. Details in
+[project-docs](project-docs/02-architecture/road-centre-cost.md).
 
 **Memory map** (`local_map.py`, inside `driver`).
 - **Why:** perception sees only 2.7–10 m ahead in a narrow cone, so the

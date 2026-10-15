@@ -19,8 +19,8 @@ spotter walking alongside.
 4. **Step 2 live:** speed hold on a straight; unplug the camera mid-run → must
    coast, no brake; emergency brake on a cardboard box at walking pace.
 5. **Steps 3–4 live:** avoid cardboard boxes; drive over paper and paint.
-6. **Step 5:** record a campus loop with a position source, make the route
-   (`make_route.py --csv --offset 0`), shadow mode first, then live.
+6. **Road following:** a campus road with clear edges, road-centre cost on,
+   shadow mode first, then live. (No recorded routes: [D-021](../03-decisions/D-021-no-recorded-routes.md).)
 
 Record each session in `10-worklog/` and results in
 [09-testing-and-results](../09-testing-and-results/README.md).

@@ -1,7 +1,7 @@
 # D-013 · The loop route comes from the road geometry, in the kerb-side left lane
 
 - **Date:** 2026-10-08
-- **Status:** In review ([PR #4](https://github.com/BITSAuto/cart_driver/pull/4))
+- **Status:** **Superseded by [D-021](D-021-no-recorded-routes.md)** (2026-10-15); PR #4 not merged
 
 ## Context
 A centre line recorded by following the yellow line (`record_route.py`, 526 m)

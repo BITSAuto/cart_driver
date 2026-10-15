@@ -6,7 +6,7 @@ Run RViz with `use_sim_time:=true` on the same domain; fixed frame `odom`.
 | --- | --- |
 | Map | `/cart/local_map` |
 | Path | `/cart/plan` |
-| Path | `/cart/route` (PR #4) |
+| Path | `/cart/centre_line` (road-centre cost) |
 | Odometry or TF | `/cart/odom`, `odom → base_link` |
 | Map (in `camera_ground`) | `/traversability/grid` |
 

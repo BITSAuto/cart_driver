@@ -12,7 +12,10 @@ and scored on the memory map (odom frame):
   clearance   penalty for passing within ``soft_clearance`` of lethal cells
   unknown     share of the path over cells never (or not recently) seen
   route       distance from the route ahead (when a route is given)
-  heading     without a route: end heading vs. a slowly updated reference
+  centre      distance of the body centre from the road's centre line seen by
+              perception, and heading against it (when one is available;
+              cart_driver.centre_line)
+  heading     with neither: end heading vs. a slowly updated reference
               heading, so the vehicle returns to its course after swerving
   smoothness  change from the previous target (relay chatter wears it)
   steering    small preference for straight
@@ -40,7 +43,9 @@ class PlannerWeights:
     unknown: float = 2.0
     route: float = 1.5
     route_heading: float = 2.0
-    heading: float = 3.0          # per rad, route-less heading keeping
+    centre: float = 1.5           # per m of mean distance from the road centre line
+    centre_heading: float = 2.0   # per rad
+    heading: float = 3.0          # per rad, heading keeping without route or centre line
     smoothness: float = 0.02      # per degree of change
     steering: float = 0.005       # per degree away from straight
 
@@ -84,11 +89,13 @@ class ArcPlanner:
                 out[i, k] = pose
         return out
 
-    def plan(self, view, start, steer_now_deg, speed, prev_target_deg=0.0, route=None, ref_heading=None):
+    def plan(self, view, start, steer_now_deg, speed, prev_target_deg=0.0, route=None, ref_heading=None,
+             centre=None):
         """Choose a steering target. ``view``: GridView in the same frame as
         ``start`` (rear-axle pose). ``route``: optional object with
         ``cost(poses) -> (cross_track m, heading error rad)`` per candidate end.
-        ``ref_heading``: without a route, the course to return to (odom rad)."""
+        ``centre``: optional centre_line.CentreLine in the same frame.
+        ``ref_heading``: without either, the course to return to (odom rad)."""
         poses = self.rollout(start, steer_now_deg, speed)
         n, s, _ = poses.shape
         pts = footprint_points(poses.reshape(-1, 3), self.circles).reshape(n, s, len(self.circles), 2)
@@ -105,10 +112,17 @@ class ArcPlanner:
         mid = pts[:, :, len(self.circles) // 2, :]                            # body centre
         unknown = view.value_at(mid[..., 0], mid[..., 1]) == UNKNOWN
         cost += self.w.unknown * unknown.mean(axis=1)
+        guided = False
         if route is not None:
             cross, heading = route.cost(poses[:, -1, :])
             cost += self.w.route * np.asarray(cross) + self.w.route_heading * np.abs(np.asarray(heading))
-        elif ref_heading is not None:
+            guided = True
+        if centre is not None:
+            res = centre.cost(poses, point_x=self.p.wheelbase / 2, step_m=self.step_m)
+            if res is not None:
+                cost += self.w.centre * res[0] + self.w.centre_heading * np.abs(res[1])
+                guided = True
+        if not guided and ref_heading is not None:
             err = np.arctan2(np.sin(poses[:, -1, 2] - ref_heading), np.cos(poses[:, -1, 2] - ref_heading))
             cost += self.w.heading * np.abs(err)
         cost += self.w.smoothness * np.abs(self.targets - prev_target_deg)
