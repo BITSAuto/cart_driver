@@ -32,7 +32,6 @@ cost += 1.5 × mean |distance from the line|  +  2.0 × |heading error at the en
 
 - Used only while the line is ≤ `centre_max_age` (1 s) old.
 - While used, route-less heading keeping is off (it would fight bends).
-- With a route (step 5, PR #4) both costs add.
 - Collision and clearance are unchanged: an obstacle on the centre line rules
   candidates out, the car passes it, and the cost pulls it back afterwards.
 

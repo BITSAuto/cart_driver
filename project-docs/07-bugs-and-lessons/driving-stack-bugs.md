@@ -43,4 +43,6 @@
 - "rcl_shutdown already called" when Ctrl-C had already shut the context
   down: wrapped shutdown in try/except (step 2).
 - `RuntimeError: Unable to convert call argument` from a callback cut off by
-  Ctrl-C: swallowed only when `rclpy.ok()` is false (step 5, PR #4).
+  Ctrl-C: swallowed only when `rclpy.ok()` is false. That fix was part of
+  step 5 (PR #4), which was not adopted, so it is **not on `main`**; port it
+  separately.

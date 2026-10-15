@@ -42,7 +42,6 @@ flowchart LR
 | `planner.py` | `ArcPlanner`, `PlannerWeights`, `Plan` |
 | `road_model.py` | road_follower's centre-line estimator, vendored ([D-020](../03-decisions/D-020-road-centre-cost-from-road-follower.md)) |
 | `centre_line.py` | `CentreLine`: the fitted line in odom; seeding; planner cost |
-| `route.py` (PR #4) | `Route`, `WorldAligner`, `RouteFollower` |
 | `driver_node.py`, `safety_node.py` | the two ROS nodes |
 
 ## Launch and config
@@ -57,9 +56,5 @@ flowchart LR
 ## Tools (`tools/`)
 - `simtools.py`: `spawn` (box relative to the GPS, `--flat` for drivable
   clutter), `remove`, `monitor SECONDS OUT.csv [--until-stopped]` (logs speed,
-  safety, brake, steering, GPS, collision distance, cross-track; prints a
+  safety, brake, steering, GPS, collision distance; prints a
   summary).
-- `record_route.py` (PR #4): drives the yellow centre line and records GPS.
-- `make_route.py` (PR #4): builds route YAML from road geometry or a recorded
-  CSV.
-- `routes/tesla_city_loop.yaml` (PR #4).

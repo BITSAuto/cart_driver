@@ -10,8 +10,8 @@ python3 tools/simtools.py monitor 120 run.csv                        # terminal 
   `config/tesla_sim.yaml`).
 - Perception takes a minute or two to load; until the first grid the car
   holds still, then the driver starts at 5 km/h.
-- `ros2 topic echo /cart/state` shows what the driver is doing (and the route
-  progress with PR #4).
+- `ros2 topic echo /cart/state` shows what the driver is doing, and the
+  distance from the road centre when a centre line is fitted.
 - An emergency brake is **latched**: after the car stops, call
   `ros2 service call /cart_safety/reset std_srvs/srv/Trigger`, or restart the
   sim to return to the start pose.

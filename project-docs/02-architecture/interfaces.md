@@ -9,14 +9,12 @@
 | in | `/vehicle/imu` | Imu | yaw rate (`use_imu`) |
 | in | `/cart/safety` | String | `drive` / `coast` / `emergency_brake` |
 | in | `/traversability/grid` | OccupancyGrid | integrated into memory at the capture-time camera pose |
-| in | `/vehicle/gps` (PR #4) | PointStamped | world position of the GPS point |
 | out | `/cmd_ackermann` | AckermannDrive | speed km/h (≥ 0), steering rad (+ = right) |
 | out | `/cart/odom` + TF `odom → base_link` | Odometry | rear-axle pose |
-| out | `/cart/state` | String | e.g. `drive`, `coast (blocked: no clear path)`, `coast (emergency_brake)`; with a route also progress, lap, cross-track |
+| out | `/cart/state` | String | e.g. `drive`, `coast (blocked: no clear path)`, `coast (emergency_brake)`; with a road-centre line also the distance from it |
 | out | `/cart/local_map` | OccupancyGrid | memory map, `odom`, 2 Hz |
 | out | `/cart/plan` | Path | chosen candidate, `odom` |
 | out | `/cart/steer_target` | Float32 | degrees, + = right |
-| out | `/cart/route`, `/cart/route/cross_track` (PR #4) | Path, Float32 | route window in `odom`; signed cross-track (+ = left) |
 | out | `/cart/centre_line` | Path | fitted road centre line in `odom` (road-centre cost) |
 
 | Parameter | Default | Meaning |
@@ -33,8 +31,6 @@
 | `heading_tau` | 8 s | route-less heading keeping |
 | `road_centre`, `centre_max_age` | true, 1.0 s | road-centre cost ([road-centre-cost.md](road-centre-cost.md)) |
 | `road_x_near`, `road_x_far`, `road_min_width`, `road_max_width`, `road_nominal_width` | 3, 9.5, 2, 14, 0 m | estimator settings |
-| `route_file` (PR #4) | `''` | YAML; relative names resolve in `share/cart_driver/routes/` |
-| `gps_topic`, `gps_x`, `initial_world_yaw` (PR #4) | `/vehicle/gps`, wheelbase + front overhang, 0.0 | route alignment |
 
 ## safety (`cart_safety`)
 

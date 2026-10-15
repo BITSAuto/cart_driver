@@ -25,18 +25,23 @@ without using the brake except in a genuine emergency.
 2. **Speed hold + odometry + an independent safety monitor.**
 3. **Short-term memory map** in the `odom` frame.
 4. **Local planner** on the memory map, plus avoidance scenarios.
-5. **Loop route:** follow a closed keep-left loop continuously.
+5. ~~**Loop route:** follow a closed keep-left loop continuously.~~ Built and
+   tested (PR #4) but **dropped on 2026-10-15** so the cart isn't tied to one
+   recorded loop ([D-021](../03-decisions/D-021-no-recorded-routes.md)).
+6. **Road-centre cost** ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6)):
+   keep to the middle of whatever road perception shows.
 
 Each step landed as its own PR, stacked on the previous one.
 
-## Status (2026-10-09)
-Steps 1–4 merged. Step 5 is in review
-([PR #4](https://github.com/BITSAuto/cart_driver/pull/4)): in the sim the car
-drove 584 m (more than a lap) at 5.00 km/h with 0 brakes and 0 coasting,
-0.31 m from the route on average. Nothing has run on the real cart: it needs
-a speed source, a position fix for the route, its real dimensions and coast
-rate ([05-status](../05-status/README.md)).
+## Status (2026-10-15)
+Steps 1–4 merged. Step 5 (recorded loop route) was dropped. The road-centre
+cost is in review ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6)):
+in road_follower's 7 m `road_loop` world the car drove 1.26 laps at 5 km/h,
+0.14 m from the true centre on average, 0 brakes. Nothing has run on the real
+cart: it needs a speed source, its real dimensions and coast rate
+([05-status](../05-status/README.md)).
 
 ## Non-goals for now
-Stopping at destinations, A→B routing on a campus map, junction decisions,
-reversing, moving obstacles.
+Stopping at destinations, A→B routing on a campus map, reversing, moving
+obstacles. (Junction decisions became a real gap once routes were dropped:
+[Q-008](../06-open-questions/Q-008-junctions-and-a-to-b.md).)

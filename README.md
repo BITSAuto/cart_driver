@@ -31,7 +31,9 @@ changing anything, and update them with every change.
 2. Short-term memory map: rolling local occupancy in the `odom` frame.
 3. Local planner: steering paths evaluated on the memory map, plus a
    scenario suite in the sim.
-4. Loop route: follow a recorded loop (keep-left) continuously.
+4. ~~Loop route: follow a recorded loop.~~ Dropped: the cart drives from
+   perception, not a recorded route (project-docs D-021).
+5. Road-centre cost: keep to the middle of the road perception sees.
 
 Each step lands as its own pull request.
 

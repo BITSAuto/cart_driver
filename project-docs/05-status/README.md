@@ -8,7 +8,8 @@
 
 ## Snapshot (2026-10-09)
 - **Merged:** steps 2–4 (PRs #1–#3); `main` = `a0dabc2`.
-- **In review:** step 5, loop route ([PR #4](https://github.com/BITSAuto/cart_driver/pull/4)); road-centre cost (branch `feat/road-centre-cost`).
+- **In review:** road-centre cost ([PR #6](https://github.com/BITSAuto/cart_driver/pull/6)).
+- **Dropped:** step 5, the recorded loop route (PR #4), on 2026-10-15 ([D-021](../03-decisions/D-021-no-recorded-routes.md)).
 - **Sim:** a full loop at 5 km/h with 0 brakes; avoidance, clutter and
   emergency scenarios pass.
 - **Real cart:** not started; blocked on a speed source and a position fix

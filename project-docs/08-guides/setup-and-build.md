@@ -8,7 +8,7 @@ launch (see traversability's book for where models live).
 ```bash
 cd ~/ros2_ws/src && git clone https://github.com/BITSAuto/cart_driver.git
 cd ~/ros2_ws && PYTHONNOUSERSITE=1 colcon build --symlink-install --packages-select cart_driver
-cd ~/ros2_ws/src/cart_driver && python3 -m pytest test        # 18 on main, 26 with PR #4
+cd ~/ros2_ws/src/cart_driver && python3 -m pytest test        # 18 on main, 24 with the road-centre cost
 ```
-New files under `routes/` need a rebuild to be installed (symlink install
+New files (e.g. under `config/`) need a rebuild to be installed (symlink install
 covers edits to existing files).

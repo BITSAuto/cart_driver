@@ -3,7 +3,7 @@
 The shared engineering record for **cart_driver**, the BITSAuto cart's
 driving stack: a 5 km/h throttle-only speed hold, an independent safety
 monitor that is the only thing allowed to brake, a short-term memory map, a
-relay-aware planner and loop-route following. The usage summary is the
+relay-aware planner and a road-centre cost that keeps it mid-road. The usage summary is the
 top-level [README](../README.md).
 
 ## Start here
@@ -18,11 +18,13 @@ top-level [README](../README.md).
 
 ## Status at a glance (2026-10-09)
 
-Steps 2–4 merged; step 5 (loop route) in review as PR #4. In the sim: a full
-loop at 5 km/h with 0 brakes, avoidance with 0.49 m clearance, flat clutter
-driven over, emergency stops when avoidance is impossible. Real cart: not
-started; it needs a speed source, a position fix, its dimensions and coast
-rate.
+Steps 2–4 merged; the road-centre cost in review (PR #6); step 5 (recorded
+loop route) dropped on 2026-10-15 (D-021). In the sim: road following on a
+7 m road with curbs at 5 km/h (0.14 m from centre, 0 brakes), avoidance with
+0.49 m clearance on wide roads, flat clutter driven over, emergency stops
+when avoidance is impossible. Gaps: junctions, keeping left, obstacles on
+narrow roads. Real cart: not started; it needs a speed source, its
+dimensions and coast rate.
 
 ## Contents
 

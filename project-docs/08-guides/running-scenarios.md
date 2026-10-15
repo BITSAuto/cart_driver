@@ -26,7 +26,7 @@ The scenarios behind the recorded results:
 | D | box in the lane 20 m ahead | steers around it, 0 brakes, no coasting |
 | E | paper, paint line, dark stain in the lane (`--flat`) | drives straight over, 0 brakes |
 | F | box appears 4.5 m ahead while cruising | emergency brake, stops short |
-| L | follow the loop for 420 s (PR #4) | > 1 lap, 0 brakes, cross-track < 1 m |
+| L | follow the loop for 420 s (step 5, not adopted) | > 1 lap, 0 brakes, cross-track < 1 m |
 
 The shell wrappers that ran these lived outside the repo
 ([Q-011](../06-open-questions/Q-011-scenario-scripts-not-in-repo.md)).

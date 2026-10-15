@@ -1,5 +1,7 @@
 # Route following (step 5, in review: [PR #4](https://github.com/BITSAuto/cart_driver/pull/4))
 
+> **Not adopted (2026-10-15):** step 5 was not merged; see [D-021](../03-decisions/D-021-no-recorded-routes.md). Kept as a record.
+
 ## The route
 `routes/tesla_city_loop.yaml`: a closed 480 m loop in the **kerb-side left
 lane** (8.06 m left of the centre line), anticlockwise, in the world frame,

@@ -21,8 +21,9 @@ cost:
 - each candidate is scored by the mean distance of its body centre from the
   line (1.5 per m) and its heading error at the end of the overlap (2 per
   rad);
-- while a line is fresh (≤ 1 s) it replaces route-less heading keeping; with
-  a route both costs apply.
+- while a line is fresh (≤ 1 s) it replaces route-less heading keeping.
+  (A route cost could be added on top; routes were dropped by
+  [D-021](D-021-no-recorded-routes.md).)
 
 ## Alternatives considered
 - **Run road_follower and let cart_driver's safety monitor govern speed and
