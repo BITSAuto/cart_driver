@@ -1,8 +1,9 @@
 """cart_driver in tesla_sim: perception + safety monitor + driver.
 
 Start the sim first (run_tesla_sim.sh). Launch arguments:
-  model       segmentation backend for perception
-              (default: the sim-trained RGB-D student)
+  model       segmentation backend for perception (default: the sim-trained
+              RGB-D student, whichever form of it this machine has; see
+              default_model())
   perception  also start the traversability stack (default: true)
   cart_params cart_driver parameter file (default: config/tesla_sim.yaml).
               Deliberately not called 'params': launch arguments are global,
@@ -21,7 +22,26 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-DEFAULT_MODEL = 'student:' + os.path.expanduser('~/traversability_data/students/b0_rgbd_sim/best.pt')
+def default_model():
+    """The sim-trained RGB-D student, in the form this machine can run.
+
+    The Orin has TensorRT but no torch, and keeps engines in
+    $BITSAUTO_HOME/models (BITSAuto_All_repo layout); the laptop has torch
+    and the training checkpoint. Override with model:=... if neither fits.
+    """
+    home = os.environ.get('BITSAUTO_HOME', os.path.expanduser('~/BITSAuto_All_repo'))
+    candidates = [
+        ('trt:', os.path.join(home, 'models', 'student_b0_rgbd_sim.engine')),
+        ('student:', os.path.join(home, 'data', 'students', 'b0_rgbd_sim', 'best.pt')),
+        ('student:', os.path.expanduser('~/traversability_data/students/b0_rgbd_sim/best.pt')),
+    ]
+    for prefix, path in candidates:
+        if os.path.exists(path):
+            return prefix + path
+    return candidates[-1][0] + candidates[-1][1]      # traversability reports the missing file
+
+
+DEFAULT_MODEL = default_model()
 
 
 def generate_launch_description():

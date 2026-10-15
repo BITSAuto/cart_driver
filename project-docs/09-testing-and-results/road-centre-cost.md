@@ -44,3 +44,19 @@ limitation, not caused by the centre cost
 projection beyond the line's ends; the planner steering towards a line on
 either side; obstacles still overriding the line; a closed loop on a 40 m
 bend (1.2 m off-centre → 0.00 m over ~25 m).
+
+## Laptop re-test (2026-10-15, branch at `0dfee75` + model-default change)
+Humble laptop, ~0.43× real time, **full perception** (sim-trained SegFormer-B0
+RGB-D + depth), and `road_loop` with the sensors moved to the **real cart
+mount** (1.52 m, 9° down). The Orin's `road_loop.wbt` still has the old
+level camera at ~1.3 m, which the runs above used.
+
+| Test | Result |
+| --- | --- |
+| A. `road_loop`, no obstacles, 330 s | **461 m (1.26 laps)**, 5.00 km/h (4.89–5.06), never left the road; rear axle **0.17 m** from the true centre on average (p95 0.44, max 0.57); 0 brakes; one 0.1 s `coast` at 22.5 s (perception briefly late) |
+| B. tesla_city, box 20 m ahead in the lane, 120 s | steered round it (passed ~1.5–2 m to its side by the bumper GPS), **0 brakes**, no blocking; 166 m at 5.0 km/h |
+
+In B the centre line never fitted (21.5 m road), yet the car followed the
+first bend: heading keeping plus the clearance cost kept it along the
+**outer** barrier, about 1 m from it. That is not lane-keeping, but it does
+not stop at the bend as expected.
